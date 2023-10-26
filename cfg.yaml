@@ -1,0 +1,7 @@
+dataset:
+  images: ./flickr8K/images/
+  annotations: ./flickr8K/captions.txt
+models:
+  text_embedder: all-MiniLM-L12-v2
+
+
