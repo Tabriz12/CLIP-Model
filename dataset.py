@@ -3,19 +3,9 @@ import cv2
 from torch.utils.data import Dataset
 import os
 import matplotlib.pyplot as plt
-import yaml
 from tqdm import tqdm
-
-from sentence_transformers import SentenceTransformer
-
-#IMG_DIR = './flickr8K/images/'
-#ANNOTATION = './flickr8K/captions.txt'
-
-with open('./cfg.yaml') as cfg_file:
-
-    CFG = yaml.safe_load(cfg_file)
-
-
+from config import CFG
+from transformers import DistilBertTokenizer
 
 
 class flickr8K_dataset(Dataset):
@@ -23,58 +13,64 @@ class flickr8K_dataset(Dataset):
                  annotation=CFG['dataset']['annotations'], 
                  txt_embedder=CFG['models']['text_embedder'], 
                  transforms=None, 
-                 trainining=True) -> None:
+                 ) -> None:
 
         self.img_dir = img_dir
         self.annotation = annotation
         self.txt_embedder = txt_embedder
         self.transforms = transforms
-        self.training = trainining
+        tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased-finetuned-sst-2-english')
+        
 
-        #label_indices = {}
-        embedding_indices = {}
+        label_indices = {}
         img_indices = {}
-        embedding_model = SentenceTransformer(txt_embedder, device='cuda')
+        captions = []
+        
         with open(annotation) as txt:
             lines = txt.readlines()
-            self.lenlines = len(lines)-1
 
             for idx, line in tqdm(enumerate(lines[1:])):
                 
                 img = line.split(",", 1)[0]
                 caption = line.split(",", 1)[1].strip()
 
-                embedding_indices[idx] = embedding_model.encode(caption)
-                #label_indices[idx] = caption
+                label_indices[idx] = caption
                 img_indices[idx] = img
+                captions.append(caption)
+                
         
         self.img_indices = img_indices
-        #self.label_indices = label_indices
-        self.embedding_indices = embedding_indices
+        self.label_indices = label_indices
+        self.tokenized = tokenizer(captions, truncation=True, padding=True, return_tensors="pt")
+        
+
+
 
     def __len__(self):
-        return self.lenlines
+        return len(self.img_indices)
     
 
     def __getitem__(self, index):
 
         
-        #label = self.label_indices[index]
+        label = {'input_ids':self.tokenized['input_ids'][index],
+                 'attention_mask':self.tokenized['attention_mask'][index]
+                 }
         img_name = self.img_indices[index]
-        txt_embedding = self.embedding_indices[index]
-
         image = cv2.imread(os.path.join(self.img_dir, img_name))
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        return image, txt_embedding
+        return image, label
 
 
 
 dataset = flickr8K_dataset()
-print(dataset[0][2])
 print(dataset[0][1])
+#(len(dataset))
 #img = plt.imshow(dataset[0][0])
 #plt.show()
+
+
         
 
 
