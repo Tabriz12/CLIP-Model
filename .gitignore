@@ -1,7 +1,6 @@
 .flickr8K/
 testing.ipynb
 .experiments/
-.__pycache__/
-*.pyc
+.__pycache__
 __pycache__
 __pycache__/config.cpython-310.pyc
