@@ -1,7 +1,19 @@
 dataset:
   images: ./flickr8K/images/
   annotations: ./flickr8K/captions.txt
+
 models:
   text_embedder: all-MiniLM-L12-v2
+  vision_model: 
+  tokenizer: 
 
+batch_size: 8
+device: cuda
+
+loss:
+  vision: 0.0001
+  text: 0.0001
+  mapper: 0.001
+
+epoch: 5
 
