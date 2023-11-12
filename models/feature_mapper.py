@@ -17,7 +17,6 @@ class FeatureMapper(nn.Module):
         skip = self.fc1(x)
         x = self.relu(self.fc1(x))
         x = self.fc2(x)
-        #out = self.layer_norm(x)
         out = self.layer_norm(x+skip)
         return out
 

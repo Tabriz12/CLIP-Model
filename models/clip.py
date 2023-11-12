@@ -3,7 +3,6 @@ from torch import nn
 from models.text_model import TextModel
 from models.feature_mapper import FeatureMapper
 from models.vision_model import VisionModel
-from torch.nn import functional as F
 
 class CLIP(nn.Module):
     def __init__(self, 
@@ -22,9 +21,6 @@ class CLIP(nn.Module):
     
     def forward(self, image, text):
 
-        #print(text)
-        #print(image)
-
         vision_out = self.vision_model(image)
 
         text_out = self.text_model(text)
@@ -33,13 +29,8 @@ class CLIP(nn.Module):
 
         txt_emb = self.txt_embedder(text_out)
 
-        #print(img_emb)
-        #print(txt_emb)
-
         logits_txt = (txt_emb @ img_emb.T) / self.temperature
         logits_img = (img_emb @ txt_emb.T) / self.temperature
-
-        #print(logits_txt)
 
         loss_txt = nn.functional.cross_entropy(logits_txt, torch.arange(len(logits_txt), device=logits_txt.device))
         loss_img = nn.functional.cross_entropy(logits_img, torch.arange(len(logits_img), device=logits_img.device))

@@ -86,10 +86,6 @@ test_transform = A.Compose(
     ]
 )
 
-
-
-#dataset = Flickr8K_dataset(transform=train_transform)
-
         
 
 
