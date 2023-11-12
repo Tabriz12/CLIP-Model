@@ -1,5 +1,5 @@
-flickr8K/
+.flickr8K/
 testing.ipynb
-experiments/
+.experiments/
 __pycache__/
 *.pyc
