@@ -5,45 +5,47 @@ import os
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from config import CFG
-from transformers import DistilBertTokenizer
+from transformers import AlbertTokenizer
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
 
-
-class flickr8K_dataset(Dataset):
+tokenizer = AlbertTokenizer.from_pretrained('albert-base-v2')
+class Flickr8K_dataset(Dataset):
     def __init__(self, img_dir=CFG['dataset']['images'], 
                  annotation=CFG['dataset']['annotations'], 
-                 txt_embedder=CFG['models']['text_embedder'], 
-                 transforms=None, 
+                 tokenizer = tokenizer,
+                 split = 'train',
+                 transform = None,
+                 split_ratio = 4,
                  ) -> None:
-
-        self.img_dir = img_dir
-        self.annotation = annotation
-        self.txt_embedder = txt_embedder
-        self.transforms = transforms
-        tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased-finetuned-sst-2-english')
         
 
-        label_indices = {}
-        img_indices = {}
+        self.img_dir = img_dir
+        self.transform = transform
+        if split not in ['train', 'test']:
+            raise ValueError('split value can be either train or test')
+        
+        img_names = []
         captions = []
+        
         
         with open(annotation) as txt:
             lines = txt.readlines()
 
-            for idx, line in tqdm(enumerate(lines[1:])):
-                
-                img = line.split(",", 1)[0]
-                caption = line.split(",", 1)[1].strip()
+            for idx, line in enumerate(lines[1:]):
 
-                label_indices[idx] = caption
-                img_indices[idx] = img
-                captions.append(caption)
+                if (((split == 'train') and (idx % (split_ratio+1) != 0)) or ((split == 'test') and (idx % (split_ratio+1) == 0))):
+
+
+                    img = line.split(",", 1)[0]
+                    caption = line.split(",", 1)[1].strip()
+
+                    img_names.append(img)
+                    captions.append(caption)
                 
         
-        self.img_indices = img_indices
-        self.label_indices = label_indices
-        self.tokenized = tokenizer(captions, truncation=True, padding=True, return_tensors="pt")
-        
-
+        self.img_indices = img_names
+        self.tokenized = tokenizer(captions, truncation=True, return_tensors="pt", padding = True)
 
 
     def __len__(self):
@@ -51,25 +53,42 @@ class flickr8K_dataset(Dataset):
     
 
     def __getitem__(self, index):
-
         
-        label = {'input_ids':self.tokenized['input_ids'][index],
-                 'attention_mask':self.tokenized['attention_mask'][index]
-                 }
+        caption = {'input_ids':self.tokenized['input_ids'][index].to(CFG['device']),
+                 'attention_mask':self.tokenized['attention_mask'][index].to(CFG['device'])
+                 } #'token_type_ids': self.tokenized['token_type_ids'][index],
+        
         img_name = self.img_indices[index]
         image = cv2.imread(os.path.join(self.img_dir, img_name))
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        return image, label
+
+
+        if self.transform is not None:
+            image = self.transform(image=image)["image"].to(CFG['device'])
+        
+        return image, caption
+
+
+train_transform = A.Compose(
+    [
+        A.Resize(224, 224, always_apply = True),
+        A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+        ToTensorV2(),
+    ]
+)
+
+test_transform = A.Compose(
+    [
+        A.Resize(224, 224, always_apply = True),
+        A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+        ToTensorV2(),
+    ]
+)
 
 
 
-dataset = flickr8K_dataset()
-print(dataset[0][1])
-#(len(dataset))
-#img = plt.imshow(dataset[0][0])
-#plt.show()
-
+#dataset = Flickr8K_dataset(transform=train_transform)
 
         
 
